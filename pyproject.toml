@@ -1,0 +1,25 @@
+[project]
+name = "nuscenes-experiments"
+version = "0.1.0"
+description = "nuScenes devkit experiments for 3D detection and lane detection"
+requires-python = ">=3.9,<3.11"
+dependencies = [
+    "numpy>=1.23.0",
+    "matplotlib>=3.5.0",
+    "opencv-python>=4.7.0",
+    "pillow>=9.3.0",
+    "pyquaternion>=0.9.9",
+    "tqdm>=4.64.0",
+    "torch>=2.0.0",
+    "torchvision>=0.15.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.uv]
+dev-dependencies = [
+    "jupyter>=1.0.0",
+    "ipython>=8.10.0",
+]
