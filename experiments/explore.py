@@ -13,6 +13,7 @@ from typing import Dict, List
 import numpy as np
 import matplotlib.pyplot as plt
 from PIL import Image
+import mlflow
 
 
 class NuScenesExplorer:
@@ -171,6 +172,11 @@ class NuScenesExplorer:
 
 
 def main():
+    # Setup MLflow
+    mlflow_uri = os.environ.get('MLFLOW_TRACKING_URI', 'http://localhost:5001')
+    mlflow.set_tracking_uri(mlflow_uri)
+    mlflow.set_experiment("nuscenes-data-exploration")
+
     # Example usage
     dataroot = os.environ.get('NUSCENES_DATAROOT', '/data/nuscenes')
 
@@ -179,13 +185,32 @@ def main():
         print("Please set NUSCENES_DATAROOT environment variable or mount data volume")
         return
 
-    explorer = NuScenesExplorer(dataroot, version='v1.0-mini')
-    explorer.print_summary()
+    with mlflow.start_run(run_name="explore_dataset"):
+        explorer = NuScenesExplorer(dataroot, version='v1.0-mini')
 
-    # Visualize first sample
-    if len(explorer.sample) > 0:
-        print("Visualizing first sample...")
-        explorer.visualize_sample(0)
+        # Log dataset statistics
+        mlflow.log_param("dataset_version", explorer.version)
+        mlflow.log_metric("num_scenes", len(explorer.scene))
+        mlflow.log_metric("num_samples", len(explorer.sample))
+        mlflow.log_metric("num_annotations", len(explorer.sample_annotation))
+        mlflow.log_metric("num_categories", len(explorer.get_object_categories()))
+
+        # Log sensor info
+        sensor_types = explorer.get_sensor_types()
+        for sensor_type, count in sensor_types.items():
+            mlflow.log_metric(f"num_{sensor_type}_sensors", count)
+
+        explorer.print_summary()
+
+        # Visualize first sample
+        if len(explorer.sample) > 0:
+            print("Visualizing first sample...")
+            explorer.visualize_sample(0)
+
+            # Log visualization
+            if os.path.exists('sample_cameras.png'):
+                mlflow.log_artifact('sample_cameras.png')
+                print(f"Logged visualization to MLflow: {mlflow_uri}")
 
 
 if __name__ == "__main__":

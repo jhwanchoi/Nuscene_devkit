@@ -8,6 +8,7 @@
 - **Annotations**: 3D bounding boxes, 23 object categories, tracking IDs
 - **Map Data**: HD semantic maps with lane geometry
 - **Lightweight Models**: Simple PointNet for 3D detection testing
+- **MLflow Integration**: Experiment tracking at port 5001
 
 ## Setup
 
@@ -27,8 +28,9 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 # Install dependencies
 uv pip install -e .
 
-# Set data path
+# Set environment variables
 export NUSCENES_DATAROOT=/path/to/nuscenes
+export MLFLOW_TRACKING_URI=http://localhost:5001
 ```
 
 ## Download Dataset
@@ -39,6 +41,19 @@ https://www.nuscenes.org/nuscenes#download
 Extract to `/data/nuscenes` or set `NUSCENES_DATAROOT`.
 
 ## Usage
+
+### Setup MLflow Experiments
+
+```bash
+python experiments/setup_mlflow.py
+```
+
+This creates the following experiments:
+- `nuscenes-data-exploration`: Dataset exploration runs
+- `nuscenes-3d-detection`: 3D object detection experiments
+- `nuscenes-lane-detection`: Lane detection experiments
+
+View experiments at: http://localhost:5001
 
 ### Explore Dataset Features
 
@@ -51,6 +66,7 @@ This will show:
 - Available sensors
 - Object categories
 - Visualize camera views
+- **Logs to MLflow**: metrics, parameters, and visualizations
 
 ### Test 3D Object Detection
 
@@ -59,20 +75,22 @@ python experiments/test_inference.py
 ```
 
 Simple PointNet model for testing:
-- Lightweight architecture
+- Lightweight architecture (~350K parameters)
 - CPU/GPU support
 - Checkpoint save/load
+- **Logs to MLflow**: model, metrics, and artifacts
 
 ## Project Structure
 
 ```
 .
-├── Dockerfile              # Docker environment
-├── pyproject.toml          # Dependencies (uv)
+├── Dockerfile                 # Docker environment
+├── pyproject.toml             # Dependencies (uv, mlflow==3.5.1)
 ├── experiments/
-│   ├── explore.py         # Data exploration
-│   └── test_inference.py  # 3D detection test
-└── data/                  # nuScenes dataset (mount/download)
+│   ├── setup_mlflow.py       # MLflow experiment setup
+│   ├── explore.py            # Data exploration + MLflow logging
+│   └── test_inference.py     # 3D detection test + MLflow tracking
+└── data/                     # nuScenes dataset (mount/download)
 ```
 
 ## nuScenes Data Schema
@@ -83,9 +101,25 @@ Simple PointNet model for testing:
 - **Ego Pose**: Vehicle position/orientation
 - **Annotations**: 3D bounding boxes with attributes
 
+## MLflow Tracking
+
+All experiments automatically log to MLflow at `http://localhost:5001`:
+
+**Data Exploration Logs:**
+- Dataset statistics (scenes, samples, annotations)
+- Sensor counts by type
+- Camera visualizations
+
+**3D Detection Logs:**
+- Model architecture and parameters
+- Inference confidence scores
+- PyTorch model artifacts
+- Checkpoint validation results
+
 ## Next Steps
 
 1. Integrate real nuScenes LiDAR data
 2. Implement lane detection using Map API
 3. Train models on mini dataset
 4. Add evaluation metrics
+5. Compare models in MLflow UI

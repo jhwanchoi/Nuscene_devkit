@@ -12,6 +12,7 @@ dependencies = [
     "tqdm>=4.64.0",
     "torch>=2.0.0",
     "torchvision>=0.15.0",
+    "mlflow==3.5.1",
 ]
 
 [build-system]

@@ -10,6 +10,8 @@ from typing import List, Tuple
 import numpy as np
 import torch
 import torch.nn as nn
+import mlflow
+import mlflow.pytorch
 
 
 class SimplePointNet(nn.Module):
@@ -153,47 +155,71 @@ def test_random_pointcloud():
     print("Testing Simple 3D Object Detector")
     print("="*60)
 
-    # Create detector
-    device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    print(f"Using device: {device}")
+    # Setup MLflow
+    mlflow_uri = os.environ.get('MLFLOW_TRACKING_URI', 'http://localhost:5001')
+    mlflow.set_tracking_uri(mlflow_uri)
+    mlflow.set_experiment("nuscenes-3d-detection")
 
-    detector = Simple3DDetector(num_classes=10, device=device)
+    with mlflow.start_run(run_name="test_simple_pointnet"):
+        # Create detector
+        device = 'cuda' if torch.cuda.is_available() else 'cpu'
+        print(f"Using device: {device}")
 
-    # Generate random point cloud (simulate LiDAR data)
-    print("\nGenerating random point cloud...")
-    num_points = 2048
-    points = np.random.randn(num_points, 3).astype(np.float32)
+        detector = Simple3DDetector(num_classes=10, device=device)
 
-    # Run inference
-    print("Running inference...")
-    pred_class, confidence = detector.predict(points)
+        # Log model parameters
+        num_params = sum(p.numel() for p in detector.model.parameters())
+        mlflow.log_param("model_type", "SimplePointNet")
+        mlflow.log_param("num_classes", 10)
+        mlflow.log_param("device", device)
+        mlflow.log_metric("num_parameters", num_params)
 
-    print(f"\nResults:")
-    print(f"  Predicted class: {pred_class}")
-    print(f"  Confidence: {confidence:.4f}")
+        # Generate random point cloud (simulate LiDAR data)
+        print("\nGenerating random point cloud...")
+        num_points = 2048
+        points = np.random.randn(num_points, 3).astype(np.float32)
+        mlflow.log_param("num_points", num_points)
 
-    # Test checkpoint save/load
-    print("\nTesting checkpoint save/load...")
-    checkpoint_path = "simple_detector.pth"
-    detector.save_checkpoint(checkpoint_path)
+        # Run inference
+        print("Running inference...")
+        pred_class, confidence = detector.predict(points)
 
-    # Create new detector and load
-    new_detector = Simple3DDetector(num_classes=10, device=device)
-    new_detector.load_checkpoint(checkpoint_path)
+        print(f"\nResults:")
+        print(f"  Predicted class: {pred_class}")
+        print(f"  Confidence: {confidence:.4f}")
 
-    # Verify same prediction
-    pred_class2, confidence2 = new_detector.predict(points)
-    assert pred_class == pred_class2
-    assert abs(confidence - confidence2) < 1e-5
-    print("Checkpoint save/load test passed!")
+        # Log inference results
+        mlflow.log_metric("inference_confidence", confidence)
+        mlflow.log_param("predicted_class", pred_class)
 
-    # Clean up
-    if os.path.exists(checkpoint_path):
-        os.remove(checkpoint_path)
+        # Test checkpoint save/load
+        print("\nTesting checkpoint save/load...")
+        checkpoint_path = "simple_detector.pth"
+        detector.save_checkpoint(checkpoint_path)
 
-    print("\n" + "="*60)
-    print("Test completed successfully!")
-    print("="*60 + "\n")
+        # Log model to MLflow
+        mlflow.pytorch.log_model(detector.model, "model")
+
+        # Create new detector and load
+        new_detector = Simple3DDetector(num_classes=10, device=device)
+        new_detector.load_checkpoint(checkpoint_path)
+
+        # Verify same prediction
+        pred_class2, confidence2 = new_detector.predict(points)
+        assert pred_class == pred_class2
+        assert abs(confidence - confidence2) < 1e-5
+        print("Checkpoint save/load test passed!")
+
+        mlflow.log_metric("checkpoint_test_passed", 1)
+
+        # Clean up
+        if os.path.exists(checkpoint_path):
+            os.remove(checkpoint_path)
+
+        print("\n" + "="*60)
+        print("Test completed successfully!")
+        print(f"View results at: {mlflow_uri}")
+        print("="*60 + "\n")
 
 
 def main():
